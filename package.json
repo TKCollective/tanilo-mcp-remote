@@ -1,0 +1,16 @@
+{
+  "name": "tanilo-mcp-remote",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hosted Streamable HTTP endpoint exposing the tools of tanilo-mcp 3.0.0 (stateless, authless beta).",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "zod": "^3.22.0"
+  }
+}
