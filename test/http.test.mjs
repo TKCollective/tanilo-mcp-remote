@@ -29,7 +29,7 @@ const TERMS = [{ agreement_id: "MSA-2026-014", version: "1", seller: "seller.exa
 
 test("health route names the package version the tools come from", async () => {
   const h = await (await fetch(BASE + "/health")).json();
-  assert.equal(h.status, "ok"); assert.equal(h.tools_from, "tanilo-mcp 3.0.0"); assert.equal(h.transport, "streamable-http"); assert.equal(h.auth, "none (free beta)");
+  assert.equal(h.status, "ok"); assert.equal(h.tools_from, "tanilo-mcp 3.0.1"); assert.equal(h.transport, "streamable-http"); assert.equal(h.auth, "none (free beta)");
 });
 
 test("GET /mcp is refused: the endpoint is stateless", async () => {
@@ -62,7 +62,7 @@ test("Streamable HTTP: initialize, list tools, call check-contract-price (docs e
 test("same tools as the published tanilo-mcp 3.0.0 over stdio: names, descriptions and input schemas", async () => {
   const http = await connectHttp();
   const stdio = new Client({ name: "remote-test", version: "0" });
-  await stdio.connect(new StdioClientTransport({ command: "npx", args: ["-y", "tanilo-mcp@3.0.0"], stderr: "pipe" }));
+  await stdio.connect(new StdioClientTransport({ command: "npx", args: ["-y", "tanilo-mcp@3.0.1"], stderr: "pipe" }));
   try {
     const a = (await http.listTools()).tools.sort((x, y) => x.name.localeCompare(y.name));
     const b = (await stdio.listTools()).tools.sort((x, y) => x.name.localeCompare(y.name));
