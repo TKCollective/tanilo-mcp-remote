@@ -1,6 +1,6 @@
 // Starts server.js on a free port, connects with the SDK's Streamable HTTP client, lists tools, calls
 // check-contract-price with the docs example against the live API (free beta route), checks the health
-// route, and compares the tool list with the published tanilo-mcp 3.0.1 over stdio (same names,
+// route, and compares the tool list with the published tanilo-mcp 3.1.0 over stdio (same names,
 // descriptions and input schemas). Set REMOTE_URL to test a deployed endpoint instead of a local one.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -29,7 +29,7 @@ const TERMS = [{ agreement_id: "MSA-2026-014", version: "1", seller: "seller.exa
 
 test("health route names the package version the tools come from", async () => {
   const h = await (await fetch(BASE + "/health")).json();
-  assert.equal(h.status, "ok"); assert.equal(h.tools_from, "tanilo-mcp 3.0.1"); assert.equal(h.transport, "streamable-http"); assert.equal(h.auth, "none (free beta)");
+  assert.equal(h.status, "ok"); assert.equal(h.tools_from, "tanilo-mcp 3.1.0"); assert.equal(h.transport, "streamable-http"); assert.equal(h.auth, "none (free beta)");
 });
 
 test("GET /mcp is refused: the endpoint is stateless", async () => {
@@ -40,7 +40,7 @@ test("Streamable HTTP: initialize, list tools, call check-contract-price (docs e
   const client = await connectHttp();
   try {
     const { tools } = await client.listTools();
-    assert.deepEqual(tools.map((t) => t.name).sort(), ["check-contract-price", "check-health", "get-manifest"]);
+    assert.deepEqual(tools.map((t) => t.name).sort(), ["check-contract-price", "check-health", "check-spend-cap", "get-manifest"]);
     const res = await client.callTool({ name: "check-contract-price", arguments: { offer: OFFER, terms: TERMS } });
     assert.equal(res.isError, undefined, res.content?.[0]?.text);
     const out = JSON.parse(res.content[0].text);
@@ -59,10 +59,29 @@ test("Streamable HTTP: initialize, list tools, call check-contract-price (docs e
   } finally { await client.close(); }
 });
 
-test("same tools as the published tanilo-mcp 3.0.1 over stdio: names, descriptions and input schemas", async () => {
+test("check-spend-cap: the docs example (3 x 12.50 against 100.00 with 70.00 spent) is contradicted by 7.50; at the cap it is verified", async () => {
+  const client = await connectHttp();
+  try {
+    const offer = { unit_price: "12.50", currency: "USD", quantity: "3", offered_at: "2026-10-10T12:00:00Z", seller: "seller.example", sku: "api.weather.v1" };
+    const cap = (spent) => ({ cap_id: "api-budget-2026-10", amount: "100.00", currency: "USD", scope: "per_period", already_spent: spent, period: { from: "2026-10-01T00:00:00Z", to: "2026-11-01T00:00:00Z" } });
+    const r1 = await client.callTool({ name: "check-spend-cap", arguments: { offer, cap: cap("70.00") } });
+    assert.equal(r1.isError, undefined, r1.content?.[0]?.text);
+    const o1 = JSON.parse(r1.content[0].text);
+    assert.equal(o1.state, "contradicted"); assert.equal(o1.verdict, "halt"); assert.equal(o1.reason, "cap_exceeded");
+    assert.equal(o1.offer_total, "37.50"); assert.equal(o1.remaining, "30.00"); assert.equal(o1.excess, "7.50"); assert.equal(o1.cap_already_exhausted, false);
+    assert.equal(o1.kid, "tanilo-2026-10-ed25519-7d885da9"); assert.ok(o1.receipt && typeof o1.receipt.payload === "string");
+    const r2 = await client.callTool({ name: "check-spend-cap", arguments: { offer, cap: cap("62.50") } });
+    const o2 = JSON.parse(r2.content[0].text);
+    assert.equal(o2.state, "verified"); assert.equal(o2.verdict, "act"); assert.equal(o2.remaining, "37.50"); assert.equal(o2.excess, null);
+  } finally { await client.close(); }
+});
+
+test("same tools as the published tanilo-mcp 3.1.0 over stdio: names, descriptions and input schemas", async () => {
   const http = await connectHttp();
   const stdio = new Client({ name: "remote-test", version: "0" });
-  await stdio.connect(new StdioClientTransport({ command: "npx", args: ["-y", "tanilo-mcp@3.0.1"], stderr: "pipe" }));
+  // TANILO_MCP_STDIO names a local build to compare with (a path to dist/index.js); by default the published package.
+  const local = process.env.TANILO_MCP_STDIO;
+  await stdio.connect(new StdioClientTransport(local ? { command: process.execPath, args: [local], stderr: "pipe" } : { command: "npx", args: ["-y", "tanilo-mcp@3.1.0"], stderr: "pipe" }));
   try {
     const a = (await http.listTools()).tools.sort((x, y) => x.name.localeCompare(y.name));
     const b = (await stdio.listTools()).tools.sort((x, y) => x.name.localeCompare(y.name));
