@@ -1,6 +1,6 @@
 // Starts server.js on a free port, connects with the SDK's Streamable HTTP client, lists tools, calls
 // check-contract-price with the docs example against the live API (free beta route), checks the health
-// route, and compares the tool list with the published tanilo-mcp 3.0.0 over stdio (same names,
+// route, and compares the tool list with the published tanilo-mcp 3.0.1 over stdio (same names,
 // descriptions and input schemas). Set REMOTE_URL to test a deployed endpoint instead of a local one.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -59,7 +59,7 @@ test("Streamable HTTP: initialize, list tools, call check-contract-price (docs e
   } finally { await client.close(); }
 });
 
-test("same tools as the published tanilo-mcp 3.0.0 over stdio: names, descriptions and input schemas", async () => {
+test("same tools as the published tanilo-mcp 3.0.1 over stdio: names, descriptions and input schemas", async () => {
   const http = await connectHttp();
   const stdio = new Client({ name: "remote-test", version: "0" });
   await stdio.connect(new StdioClientTransport({ command: "npx", args: ["-y", "tanilo-mcp@3.0.1"], stderr: "pipe" }));
